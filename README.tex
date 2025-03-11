@@ -1,0 +1,216 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{a4paper, margin=1in}
+
+\title{Documentation de l'API REST - Laravel}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction au REST API}
+
+Une API (Interface de Programmation d'Applications) est un ensemble de définitions et de protocoles permettant à des applications de communiquer et d'échanger des données ou des services.
+
+REST (Representational State Transfer) est un style d'architecture logicielle définissant un ensemble de contraintes utilisées pour créer un service web. Ce style repose sur des principes tels que l'utilisation de méthodes HTTP standards (GET, POST, PUT, DELETE), des URLs et des codes de statut HTTP pour manipuler les ressources.
+
+\subsection{Format de réponse : JSON}
+Le format standard de données échangé est le JSON (JavaScript Object Notation), qui permet de représenter des données structurées. Par exemple :
+
+\begin{verbatim}
+[
+    {
+        "id": 1,
+        "name": "Jeremie Wilondja",
+        "email": "jeremie.wilondja@akilischool.com",
+        "created_at": "2021-10-23T16:31:33.000000Z"
+    },
+    {
+        "id": 2,
+        "name": "Wilo Ahadi",
+        "email": "wilo.ahadi@gmail.com",
+        "created_at": "2021-10-23T18:24:18.000000Z"
+    }
+]
+\end{verbatim}
+
+\section{Objectif}
+
+Dans ce guide, nous vous montrerons comment mettre en place une API REST dans un projet Laravel qui retourne des données au format JSON.
+
+\section{Prérequis pour l'API}
+
+Avant de commencer, assurez-vous d'avoir un projet Laravel fonctionnel. Si ce n'est pas le cas, vous pouvez consulter ce tutoriel pour créer un projet Laravel avec Laragon.
+
+\subsection{Base de données}
+
+L'API que nous allons implémenter utilise la table \texttt{users}. Le schéma de la table est défini dans la migration suivante :
+
+\begin{verbatim}
+Schema::create('users', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->string('email')->unique();
+    $table->timestamp('email_verified_at')->nullable();
+    $table->string('password');
+    $table->rememberToken();
+    $table->timestamps();
+});
+\end{verbatim}
+
+Pour importer cette table dans la base de données, exécutez la commande suivante :
+
+\begin{verbatim}
+php artisan migrate
+\end{verbatim}
+
+\section{Le contrôleur de l'API}
+
+Générez le contrôleur pour l'API avec la commande artisan suivante :
+
+\begin{verbatim}
+php artisan make:controller API/UserController --model=User --api
+\end{verbatim}
+
+Cette commande génère un contrôleur \texttt{UserController} qui utilise le modèle \texttt{User} pour interagir avec la base de données.
+
+\subsection{Méthodes du contrôleur}
+
+Voici un aperçu des méthodes principales du contrôleur :
+
+\begin{verbatim}
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+
+class UserController extends Controller
+{
+    public function index() { }
+
+    public function store(Request $request) { }
+
+    public function show(User $user) { }
+
+    public function update(Request $request, User $user) { }
+
+    public function destroy(User $user) { }
+}
+\end{verbatim}
+
+\section{Les routes de l'API}
+
+Définissons les routes de l'API dans le fichier \texttt{/routes/api.php} :
+
+\begin{verbatim}
+use App\Http\Controllers\API\UserController;
+
+Route::apiResource("users", UserController::class);
+\end{verbatim}
+
+Cette commande génère automatiquement les routes suivantes :
+
+\begin{tabular}{|c|c|c|c|}
+\hline
+Method & URI & Name & Action \\
+\hline
+GET & api/users & users.index & App\Http\Controllers\API\UserController@index \\
+POST & api/users & users.store & App\Http\Controllers\API\UserController@store \\
+GET & api/users/{user} & users.show & App\Http\Controllers\API\UserController@show \\
+PUT|PATCH & api/users/{user} & users.update & App\Http\Controllers\API\UserController@update \\
+DELETE & api/users/{user} & users.destroy & App\Http\Controllers\API\UserController@destroy \\
+\hline
+\end{tabular}
+
+\section{Méthodes du contrôleur}
+
+\subsection{1. L'action index}
+La méthode \texttt{index()} permet d'afficher tous les utilisateurs.
+
+\begin{verbatim}
+public function index()
+{
+    $users = User::all();
+    return response()->json($users);
+}
+\end{verbatim}
+
+\subsection{2. L'action store}
+La méthode \texttt{store(Request $request)} permet de créer un nouvel utilisateur.
+
+\begin{verbatim}
+public function store(Request $request)
+{
+    $this->validate($request, [
+        'name' => 'required|max:100',
+        'email' => 'required|email|unique:users',
+        'password' => 'required|min:8'
+    ]);
+
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => bcrypt($request->password)
+    ]);
+
+    return response()->json($user, 201);
+}
+\end{verbatim}
+
+\subsection{3. L'action show}
+La méthode \texttt{show(User $user)} permet d'afficher un utilisateur spécifique.
+
+\begin{verbatim}
+public function show(User $user)
+{
+    return response()->json($user);
+}
+\end{verbatim}
+
+\subsection{4. L'action update}
+La méthode \texttt{update(Request $request, User $user)} permet de mettre à jour un utilisateur existant.
+
+\begin{verbatim}
+public function update(Request $request, User $user)
+{
+    $this->validate($request, [
+        'name' => 'required|max:100',
+        'email' => 'required|email',
+        'password' => 'required|min:8'
+    ]);
+
+    $user->update([
+        "name" => $request->name,
+        "email" => $request->email,
+        "password" => bcrypt($request->password)
+    ]);
+
+    return response()->json();
+}
+\end{verbatim}
+
+\subsection{5. L'action destroy}
+La méthode \texttt{destroy(User $user)} permet de supprimer un utilisateur.
+
+\begin{verbatim}
+public function destroy(User $user)
+{
+    $user->delete();
+    return response()->json();
+}
+\end{verbatim}
+
+\section{Conclusion}
+
+Nous avons couvert les étapes de création d'une API REST dans Laravel avec des routes et des actions CRUD (Create, Read, Update, Delete). Vous pouvez étendre cette API en ajoutant des fonctionnalités telles que l'authentification, la pagination, ou des filtres pour mieux répondre à vos besoins.
+
+\end{document}
